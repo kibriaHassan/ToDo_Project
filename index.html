@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colorful To-Do List</title>
+  <link href="./src/output.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/tailwind.css" />
+
+  <style>
+    /* Ripple Animation */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      animation: ripple 0.6s linear;
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    @keyframes ripple {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    /* Glow Button Effect */
+    .glow-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 255, 255, 0.5),
+        transparent
+      );
+      transition: 0.5s;
+    }
+
+    .glow-btn:hover::before {
+      left: 100%;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+
+  <div class="backdrop-blur-xl bg-white/20 border border-white/30 p-6 rounded-2xl shadow-2xl w-full max-w-md transition-all hover:scale-[1.02] duration-300">
+    <h2 class="text-3xl font-bold text-center text-white mb-6 drop-shadow-lg">📝 To-Do List</h2>
+
+    <!-- Input Section -->
+    <div class="flex gap-2 mb-5">
+      <div class="relative flex w-full">
+        <input
+          id="taskInput"
+          type="text"
+          placeholder="Write a new task..."
+          class="flex-1 px-4 py-2 rounded-l-xl bg-white/80 focus:bg-white focus:outline-none border border-gray-200 placeholder-gray-500 text-gray-700 shadow-sm"
+        />
+        <button
+          id="addBtn"
+          class="relative overflow-hidden px-5 py-2 font-semibold text-white rounded-r-xl transition-all duration-300
+                 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500
+                 hover:from-pink-500 hover:via-red-500 hover:to-purple-500
+                 shadow-lg hover:shadow-pink-400/60 active:scale-95 glow-btn"
+        >
+          <span class="relative z-10 flex items-center gap-1 text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+              class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 4v16m8-8H4" />
+            </svg>
+            Add
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Task List -->
+    <ul id="taskList" class="space-y-3"></ul>
+  </div>
+
+  <script>
+    const taskInput = document.getElementById("taskInput");
+    const taskList = document.getElementById("taskList");
+    const addBtn = document.getElementById("addBtn");
+
+    // Ripple effect on Add Button
+    addBtn.addEventListener("click", function (e) {
+      const ripple = document.createElement("span");
+      const rect = this.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      ripple.style.left = `${x}px`;
+      ripple.style.top = `${y}px`;
+      ripple.classList.add("ripple");
+      this.appendChild(ripple);
+
+      setTimeout(() => ripple.remove(), 600);
+      addTask();
+    });
+
+    document.addEventListener("DOMContentLoaded", loadTasks);
+    taskInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") addTask();
+    });
+
+    function addTask() {
+      const taskText = taskInput.value.trim();
+      if (taskText === "") return;
+
+      const task = { text: taskText, completed: false };
+      const tasks = getTasks();
+      tasks.push(task);
+      saveTasks(tasks);
+      renderTasks();
+      taskInput.value = "";
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = "";
+      const tasks = getTasks();
+
+      tasks.forEach((task, index) => {
+        const li = document.createElement("li");
+        li.className =
+          "flex justify-between items-center bg-white/80 px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition backdrop-blur-sm border border-gray-200";
+
+        const text = document.createElement("span");
+        text.textContent = task.text;
+        text.className = task.completed
+          ? "line-through text-gray-400"
+          : "text-gray-800 font-medium";
+
+        const doneBtn = document.createElement("button");
+        doneBtn.textContent = task.completed ? "Undo" : "Done";
+        doneBtn.className =
+          "px-3 py-1 rounded-lg text-sm font-medium text-white " +
+          (task.completed
+            ? "bg-yellow-500 hover:bg-yellow-600"
+            : "bg-green-500 hover:bg-green-600") +
+          " transition";
+        doneBtn.addEventListener("click", () => toggleComplete(index));
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className =
+          "px-3 py-1 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition";
+        delBtn.addEventListener("click", () => deleteTask(index));
+
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "flex gap-2";
+        btnGroup.append(doneBtn, delBtn);
+
+        li.append(text, btnGroup);
+        taskList.appendChild(li);
+      });
+    }
+
+    function toggleComplete(index) {
+      const tasks = getTasks();
+      tasks[index].completed = !tasks[index].completed;
+      saveTasks(tasks);
+      renderTasks();
+    }
+
+    function deleteTask(index) {
+      const tasks = getTasks();
+      tasks.splice(index, 1);
+      saveTasks(tasks);
+      renderTasks();
+    }
+
+    function getTasks() {
+      return JSON.parse(localStorage.getItem("tasks")) || [];
+    }
+
+    function saveTasks(tasks) {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    function loadTasks() {
+      renderTasks();
+    }
+  </script>
+</body>
+
+</html>
